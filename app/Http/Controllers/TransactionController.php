@@ -6,6 +6,7 @@ use App\Models\Transaction;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Validator;
@@ -42,18 +43,39 @@ class TransactionController extends Controller
                 ], 401);
             }
             
-            $walletSender = 
-            $wallet = Wallet::with('expediteur')->where()
+            $solde = Wallet::select('solde')
+                        ->join('users', 'users.id', '=', 'wallets.user_id')
+                        ->where('users.name', $request['expediteur'])
+                        ->where('wallets.type', $request['type'])
+                        ->first(); 
+
+            if($solde < $request['montant']){
+                return response()->json([
+                   'status' => false,
+                   'message' =>'solde insuffisant'
+                ], 401);
+            }
+            
 
             $transaction = Transaction::create([
                 'user_id' => Auth::id(),
                'montant' => $request['montant'],
-               'expiration' => $request['expiration']
+               'expiration' => $expediteur->id
             ]);
 
+            $newsolde = $solde - $request['montant'];
+            Wallet::where('user_id', Auth::id())
+                ->where('type', $request['type'])
+                ->update(['solde' => $newsolde]);
+        
+               
+
             return response()->json([
-                'message' => 'montant'
-            ])
+               'message' => 'transaction envoyée avec success',
+               'status' => true,
+            ], 201);
+
+            
 
 
             
@@ -63,6 +85,15 @@ class TransactionController extends Controller
                 'status' => false
             ], 500);
         }
+     }
+
+     public function getTransaction(){
+        $transaction = Transaction::where('user_id', Auth::id())->get();
+
+        return response()->json([
+            'transactions' => $transaction,
+           'status' => true
+        ], 201);
      }
     
 }
