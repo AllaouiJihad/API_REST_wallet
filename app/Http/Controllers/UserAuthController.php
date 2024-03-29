@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 
 class UserAuthController extends Controller
 {
@@ -33,11 +36,21 @@ class UserAuthController extends Controller
                 'email' => $request['email'],
                 'password' => Hash::make($request['password']),
             ]);
+            $wallet = Wallet::create([
+                'type' => 'standard',
+                'id' => Str::uuid(),
+                'user_id' => $user->id,
+                'solde' => 0
+            ]);
 
-            return response()->json([
+            
+
+            return response()->json([   
                 'token' => $user->createToken("API Token")->plainTextToken,
                 'message' => 'User Created',
-                'status' => true
+                'status' => true,
+                'wallet solde' => $wallet->solde,
+                'uuid' => Uuid::fromBytes($wallet->id)->toString()
             ], 201);
         } catch (\Throwable $th) {
             return response()->json([
@@ -71,11 +84,11 @@ class UserAuthController extends Controller
             }
 
             $user = User::where('email', $request->email)->first();
-
             return response()->json([
                 'status' => true,
                 'message' => 'User Logged In Successfully',
-                'token' => $user->createToken("API TOKEN")->plainTextToken
+                'token' => $user->createToken("API TOKEN")->plainTextToken,
+                'wallets' => $user->wallets
             ], 200);
 
         } catch (\Throwable $th) {

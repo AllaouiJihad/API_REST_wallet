@@ -7,18 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class Wallet extends Model
+class Transaction extends Model
 {
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'id',
-        'type',
         'user_id',
-        'solde',
+        'montant',
+        'expediteur',
     ];
 
     public function user(){
-        return $this->belongsTo(User::class);
+        return $this->hasOne(Wallet::class);
     }
+
+    public function expediteur(){
+        return $this->hasOne(Wallet::class, 'expediteur');
+    }
+   
 }
