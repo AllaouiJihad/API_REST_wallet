@@ -8,7 +8,8 @@ use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Validator;
 
 
@@ -24,6 +25,7 @@ class TransactionController extends Controller
                 'montant' => 'required|numeric',
                 'expediteur' => 'required|string',
                 'type' => 'required|string',
+                'typeWallet' => 'required|string',
             ]);
 
             if ($sendMoneyData->fails()) {
@@ -45,29 +47,38 @@ class TransactionController extends Controller
             
             $solde = Wallet::select('solde')
                         ->join('users', 'users.id', '=', 'wallets.user_id')
-                        ->where('users.name', $request['expediteur'])
-                        ->where('wallets.type', $request['type'])
+                        ->where('users.id', Auth::id())
+                        ->where('wallets.type', $request['typeWallet'])
                         ->first(); 
 
-            if($solde < $request['montant']){
+            if($solde->solde < $request['montant']){
                 return response()->json([
                    'status' => false,
                    'message' =>'solde insuffisant'
                 ], 401);
             }
             
-
             $transaction = Transaction::create([
                 'user_id' => Auth::id(),
                'montant' => $request['montant'],
-               'expiration' => $expediteur->id
+               'expediteur' => $expediteur->id
             ]);
 
-            $newsolde = $solde - $request['montant'];
+            $newsolde = $solde->solde - $request['montant'];
             Wallet::where('user_id', Auth::id())
-                ->where('type', $request['type'])
+                ->where('type', $request['typeWallet'])
                 ->update(['solde' => $newsolde]);
-        
+
+
+            $oldsolde = Wallet::select('solde')
+                ->join('users', 'users.id', '=', 'wallets.user_id')
+                ->where('users.id',  $expediteur->id)
+                ->where('wallets.type', $request['type'])
+                ->first();
+            $sendmoney = $oldsolde->solde + $request['montant']; 
+            Wallet::where('user_id', $expediteur->id)
+                ->where('type', $request['type'])
+                ->update(['solde' => $sendmoney]);
                
 
             return response()->json([
